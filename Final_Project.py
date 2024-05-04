@@ -228,7 +228,7 @@ def createTheCtImage(path:str)-> np.ndarray:
 
 
 
-def createAnimation(img:np.ndarray,pixel_len_mm:list,n:int,interval:int,nameImg:str,nameGif:str,combination:bool,mask:np.ndarray = None):
+def createAnimation(img:np.ndarray,pixel_len_mm:list,n:int,interval:int,nameImg:str,nameGif:str):
 
     img_min = np.amin(img)
     img_max = np.amax(img)
@@ -244,22 +244,47 @@ def createAnimation(img:np.ndarray,pixel_len_mm:list,n:int,interval:int,nameImg:
         imgrotated = projection_sagittal
 
 
-        if combination:
-            rotated_mask = rotate_on_axial_plane(mask,alpha)
-            projection_sagittal_mask = MIP_sagittal_plane(rotated_mask)
-            projection_sagittal_mask = joinImage(projection_sagittal_mask)
-            imgrotated = visualize_alpha_fusion(imgrotated,projection_sagittal_mask)
-
-        plt.imshow(imgrotated, vmin=img_min, vmax=img_max, aspect=pixel_len_mm[0] / pixel_len_mm[1])
+        plt.imshow(imgrotated,cmap='bone', vmin=img_min, vmax=img_max, aspect=pixel_len_mm[0] / pixel_len_mm[1])
         plt.savefig('results/MIP/' + nameImg +f'_{idx}.png')  # Save animation
         projections.append(imgrotated)  # Save for later animation
     # Save and visualize animation
+    animation_data = [
+        [plt.imshow(imggif, animated=True,cmap='bone', vmin=img_min, vmax=img_max, aspect=pixel_len_mm[0] / pixel_len_mm[1])]
+        for imggif in projections
+    ]
+    anim = animation.ArtistAnimation(fig, animation_data,
+                                     interval=interval, blit=True)
+    anim.save(nameGif + '.gif')  # Save animation
+
+
+
+def createAnimationAlpha(img: np.ndarray,mask:np.ndarray, pixel_len_mm: list, n: int, interval: int, nameImg: str, nameGif: str):
+    img_min = np.amin(img)
+    img_max = np.amax(img)
+    fig, ax = plt.subplots()
+    #   Configure directory to save results
+    #   os.makedirs('results/MIP/', exist_ok=True)
+    #   Create projections
+    projections = []
+    for idx, alpha in enumerate(np.linspace(0, 360 * (n - 1) / n, num=n)):
+        rotated_img = rotate_on_axial_plane(img, alpha)
+        projection_sagittal = MIP_sagittal_plane(rotated_img)
+
+        rotated_mask = rotate_on_axial_plane(mask, alpha)
+        projection_sagittal_mask = MIP_sagittal_plane(rotated_mask)
+        projection_sagittal_mask = joinImage(projection_sagittal_mask)
+        imgrotated = visualize_alpha_fusion(projection_sagittal, projection_sagittal_mask)
+
+        plt.imshow(imgrotated, vmin=img_min, vmax=img_max, aspect=pixel_len_mm[0] / pixel_len_mm[1])
+        plt.savefig('results/MIP/' + nameImg + f'_{idx}.png')  # Save animation
+        projections.append(imgrotated)  # Save for later animation
+        # Save and visualize animation
     animation_data = [
         [plt.imshow(imggif, animated=True, vmin=img_min, vmax=img_max, aspect=pixel_len_mm[0] / pixel_len_mm[1])]
         for imggif in projections
     ]
     anim = animation.ArtistAnimation(fig, animation_data,
-                                     interval=interval, blit=True)
+                                         interval=interval, blit=True)
     anim.save(nameGif + '.gif')  # Save animation
 
 
@@ -290,60 +315,11 @@ if __name__ == '__main__':
     print("Shape transpose")
     print(imgct.shape)  # Print (80, 512, 512)
 
-    createAnimation(imgseg,pixel_len_mm,24,43,"ProjectionSeg","AnimationSeg",False)
-    createAnimation(imgct, pixel_len_mm, 24, 43, "ProjectionCT", "AnimationCT", False)
+    createAnimation(imgseg,pixel_len_mm,24,43,"ProjectionSeg","AnimationSeg")
+    createAnimation(imgct, pixel_len_mm, 24, 43, "ProjectionCT", "AnimationCT")
     imgNorm = normalization(imgct)
-    createAnimation(imgNorm, pixel_len_mm, 24, 43, "ProjectionAlphaFusion", "AnimationAlphaFusion", False,imgseg)
+    createAnimationAlpha(imgNorm,imgseg, pixel_len_mm, 24, 43, "ProjectionAlphaFusion", "AnimationAlphaFusion")
 
 
 
-    """
-
-
-    projectionsCT = []
-    img_minCT = np.amin(imgct)
-    img_maxCT = np.amax(imgct)
-
-    fig, ax = plt.subplots()
-    #   Configure directory to save results
-    os.makedirs('results/MIP/', exist_ok=True)
-    #   Create projections
-    n = 24
-    imgctnorm = normalization(imgct)
-    #imgctnorm[imgctnorm < 0.3] = 0
-
-    for idx, alpha in enumerate(np.linspace(0, 360 * (n - 1) / n, num=n)):
-        rotated_imgCT = rotate_on_axial_plane(imgctnorm, alpha)
-        rotated_imgSeg = rotate_on_axial_plane(imgseg,alpha)
-
-
-        projection_saggitalCT = MIP_coronal_plane(rotated_imgCT)
-        projection_saggitalSeg = MIP_coronal_plane(rotated_imgSeg)
-
-
-
-
-
-        combined = visualize_alpha_fusion(projection_saggitalCT,joinImage(projection_saggitalSeg))
-
-
-
-
-
-
-        plt.imshow(combined, aspect=pixel_len_mm[0] / pixel_len_mm[1])
-        plt.savefig(f'results/MIP/Projection_{idx}.png')  # Save animation
-        projectionsCT.append(combined)  # Save for later animation
-    # Save and visualize animation
-    animation_data = [
-        [plt.imshow(img, animated=True,vmin=img_minCT, vmax=img_maxCT, aspect=pixel_len_mm[0] / pixel_len_mm[1])]
-        for img in projectionsCT
-    ]
-    anim = animation.ArtistAnimation(fig, animation_data,
-                                     interval=43, blit=True)
-    anim.save('AnimationCT2.gif')  # Save animation
-
-    plt.show()
-
-    """
 
