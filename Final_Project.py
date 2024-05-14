@@ -744,66 +744,8 @@ if __name__ == '__main__':
 
 
 
-    """
-    diccionario = {(1, 1, 1): (2, 2, 2), (3, 3, 3): (4, 4, 4)}
-
-    # Descomprimir el diccionario en dos listas de tuplas
-    puntos_transformados, puntos_originales = zip(*diccionario.items())
-
-    # Convertir las listas de tuplas en arrays numpy
-    puntos_transformados = np.array(puntos_transformados)
-    puntos_originales = np.array(puntos_originales)
-
-    # Mostrar los arrays numpy
-    print("Puntos transformados:")
-    print(puntos_transformados)
-    print("\nPuntos originales:")
-    print(puntos_originales)
-    lista_numpy = np.array([(1.3, 1.2, 1.1), (2.3, 2.8, 2.9)])
-
-
-    print(PointsToquartenions(lista_numpy))
-    # Redondear todos los valores al entero más cercano
-    redondeado = np.round(lista_numpy)
-
-    # Convertir los valores redondeados a enteros
-    enteros = redondeado.astype(int)
-
-    print(enteros)
-
-    lista_numpy = np.array([(1, 1, 1),(2,2,2)])
-    lista_numpy2 = np.array([(2, 2, 2)])
-
-    X =PointsToquartenions(lista_numpy)
-    Y =PointsToquartenions(lista_numpy2)
-    #X = np.array(X)
-    print(np.array(quaternion.as_vector_part(X)))
-
-
-    #print(translation(lista_numpy, np.array([1,1,1])))
-    # Añadir el elemento 0 al principio de cada tupla
-    #nuevo_array = np.insert(lista_numpy, 0, 0, axis=1)
-
-    #PointsToquartenions(lista_numpy)
-    #print(nuevo_array)
-    """
-
-
-    """
+   
     
-        Esquema:
-        Coger todos los indices,
-        Pasarlos a quaternions,
-        Transformarlos,
-        Round,
-        Zip,
-        Filtrar diccionario,
-        Unzip,
-        Indexar imagen,
-        Comparar MSE
-    
-    """
-    """
     ### Exercise 1
     path_segmentation = 'manifest-1713979305387/HCC-TACE-Seg/HCC_008/02-02-1998-NA-CT ABD LIV PRO-01687/300.000000-Segmentation-70014/1-1.dcm'
     path_CT = 'Correspondent CT'
@@ -828,14 +770,14 @@ if __name__ == '__main__':
     print(imgct.shape)  # Print (80, 512, 512)
 
     # Create the animations, for the segmentation, for the ct and for the alpha fusion
-    #createAnimation(imgseg,pixel_len_mm,24,43,"ProjectionSeg","AnimationSeg")
-    #createAnimation(imgct, pixel_len_mm, 24, 43, "ProjectionCT", "AnimationCT")
-    #imgNorm = normalization(imgct)
-    #imgseg = joinImage(imgseg)
-    #createAnimationAlpha(imgNorm,imgseg, pixel_len_mm, 24, 43, "ProjectionAlphaFusion", "AnimationAlphaFusion")
+    createAnimation(imgseg,pixel_len_mm,24,43,"ProjectionSeg","AnimationSeg")
+    createAnimation(imgct, pixel_len_mm, 24, 43, "ProjectionCT", "AnimationCT")
+    imgNorm = normalization(imgct)
+    imgseg = joinImage(imgseg)
+    createAnimationAlpha(imgNorm,imgseg, pixel_len_mm, 24, 43, "ProjectionAlphaFusion", "AnimationAlphaFusion")
 
 
-    """
+    
 
 
 
@@ -879,7 +821,7 @@ if __name__ == '__main__':
     Pacient = gaussian_filter(Pacient, sigma=1)
     ImgRef = normalization(ImgRef)
     Pacient = Pacient[:,::-1,:]
-    #Pacient = np.flip(Pacient,axis = 1)
+ 
     showImage(Pacient)
     showImage(ImgRef)
     plt.clf()
