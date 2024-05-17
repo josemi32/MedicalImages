@@ -15,10 +15,17 @@ Here, the project addresses the alignment of input images with a reference space
 The repository contains the following main files and directories:
 
 Corresponded CT/ Here there are the images of the CT.
+
 AnimationAlphaFusion is a gif with the alpha fusion between the segmentation and the ct images
+
 AnimationCt is only the animation of the ct images
+
 AnimationSeg is the animation of the segmentation
+
 FinalProject is the python file with the implementations
+
 ReferenciaGif is a gif with the phantom reference
+
 ThalamusInputGif is a gif with the thalamus in the input Space
+
 ThalamusReferenceGif is a gif with the thalamus in the reference Space
