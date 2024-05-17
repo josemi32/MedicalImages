@@ -1,4 +1,4 @@
-DICOM Image Management Project
+# DICOM Image Management Project
 Introduction
 This repository contains the code for a project aimed at  the management of DICOM (Digital Imaging and Communications in Medicine) images. The project focuses on three main aspects: loading, visualization, and coregistration of DICOM images.
 
