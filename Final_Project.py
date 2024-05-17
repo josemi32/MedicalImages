@@ -185,7 +185,7 @@ def loadSlicesCt(path: str) ->list:
     print("skipped, no SliceLocation: {}".format(skipcount))
 
     # Order the slices based on the slicelocation and then reverse it becuase it goes down to the top and we want top to down.
-    slices = sorted(slices, key=lambda s: s.SliceLocation, reverse=True)
+    slices = sorted(slices, key=lambda s: s.SliceLocation, reverse= True)
     return slices
 
 def createTheCtImage(path:str)-> np.ndarray:
@@ -218,9 +218,9 @@ def createTheCtImage(path:str)-> np.ndarray:
     # plot 3 orthogonal slices
 
 
-    slice_axial = 20  # Choose in which coordinate we want to show an image in each palne
-    slice_sagittal = 40
-    slice_coronal = 40
+    slice_axial = img3d.shape[2] // 2  # Choose in which coordinate we want to show an image in each palne
+    slice_sagittal = img3d.shape[1] // 2
+    slice_coronal = img3d.shape[0] // 2
 
     # Show the images
     a1 = plt.subplot(2, 2, 1)
@@ -258,18 +258,19 @@ def createAnimation(img:np.ndarray,pixel_len_mm:list,n:int,interval:int,nameImg:
         projection_sagittal = MIP_sagittal_plane(rotated_img)
 
         plt.clf()
-        plt.imshow(projection_sagittal,cmap='bone', vmin=img_min, vmax=img_max)
+        plt.imshow(projection_sagittal,cmap='bone', vmin=img_min, vmax=img_max,aspect=pixel_len_mm[0] / pixel_len_mm[1])
         plt.savefig('results/MIP/' + nameImg +f'_{idx}.png')  # Save animation
         projections.append(projection_sagittal)  # Save for later animation
         plt.clf()
     # Save and visualize animation
     animation_data = [
-        [plt.imshow(imggif, animated=True,cmap='bone', vmin=img_min, vmax=img_max)]
+        [plt.imshow(imggif, animated=True,cmap='bone', vmin=img_min, vmax=img_max,aspect=pixel_len_mm[0] / pixel_len_mm[1])]
         for imggif in projections
     ]
     anim = animation.ArtistAnimation(fig, animation_data,
                                      interval=interval, blit=True)
     anim.save(nameGif + '.gif')  # Save animation
+    plt.clf()
 
 
 
@@ -308,14 +309,21 @@ def createAnimationAlpha(img: np.ndarray,mask:np.ndarray, pixel_len_mm: list, n:
     anim = animation.ArtistAnimation(fig, animation_data,
                                          interval=interval, blit=True)
     anim.save(nameGif + '.gif')  # Save animation
+    plt.clf()
 
-def transformImgPacient(img: np.ndarray,shapeRef: tuple)->np.ndarray:
+def transformImgPacient(img: np.ndarray,shapeRef: tuple,pixR,pixP)->np.ndarray:
     shape_pacient = img.shape
     # pixel_spacing
 
+    pixelSpacing1 = pixP[0] * pixR[0]
+    pixelSpacing2 = pixP[1] * pixR[1]
 
-    ImgPac = cv2.resize(img,(int(shape_pacient[0] * 0.5),int(shape_pacient[1]*0.5)))
+
+    # Resize the image
+    ImgPac = cv2.resize(img,(int(shape_pacient[0] * pixelSpacing1),int(shape_pacient[1]* pixelSpacing2)))
     ImgPac = np.transpose(ImgPac, (2, 0, 1))
+
+    # Crop the Pacient to be the same shape as the reference
     start_x = (ImgPac.shape[2] - shapeRef[2]) // 2
     start_y = (ImgPac.shape[1] - shapeRef[1]) // 2
     start_z = (ImgPac.shape[0] - shapeRef[0]) // 2
@@ -345,6 +353,7 @@ def translation(
         ) -> np.ndarray:
     """ Perform translation of points """
 
+    # Simply add the traslation vector to each vector of points in the array
     result = points + translation_vector
     return result
 
@@ -355,10 +364,13 @@ def axial_rotation(
         axis_of_rotation: np.ndarray) ->np.ndarray:
     """ Perform axial rotation of `point` around `axis_of_rotation` by `angle_in_rads`. """
 
+
+    # Calculate the axis rotion and the cos and sin for the quaternion
     cos, sin = math.cos(angle_in_rads / 2), math.sin(angle_in_rads / 2)
     axis_of_rotation = axis_of_rotation * sin
 
 
+    # Get the quaternion of rotation
     Quaternion_q = quaternion.as_quat_array(np.insert(axis_of_rotation, 0, cos))
 
 
@@ -367,6 +379,7 @@ def axial_rotation(
 
     # Calculate the rotation
     points_rot_quaternion = Quaternion_q * points * quaternion.quaternion.conjugate(Quaternion_q)
+    # Get the real part of the quaternions
     points_rot = np.array(quaternion.as_vector_part(points_rot_quaternion))
 
     # Round the values to the near value
@@ -379,35 +392,31 @@ def translation_then_axialrotation(img:np.ndarray, parameters: tuple[float, ...]
 
     """
 
-                 Esquema:
-                 Crear la imagen llena de 0
-                 Coger todos los indices,
-                 Pasarlos a quaternions,
-                 Transformarlos,
-                 Round,
-                 Zip,
-                 Filtrar diccionario,
-                 Unzip,
-                 Indexar imagen,
-                 Comparar MSE
+                 Scheme:
+                 Create the transformation image with 0
+                 Get the indexes,
+                 Translate them,
+                 Transform them to quaternions,
+                 Rotated them,
+                 Round them,
+                 Filter them,
+                 Index the image,
+                 Return it
 
-             """
+    """
 
     t1, t2, t3, angle_in_rads, v1, v2, v3 = parameters
 
+    # Create the transformed image
     img_trans = np.zeros(img.shape)
-    #Get the tuples of indices
 
-    #indixes = np.indices(img.shape)
-
-    # Obtener todas las combinaciones de índices
-    #points_img = np.array(list(zip(*[index.flatten() for index in indixes])))
-    # Obtener todas las combinaciones de índices
+    # Get all the points
     points_img = np.argwhere(np.ones(img.shape))
     # Translate the points
     points_traslation = translation(points_img, np.array([t1,t2,t3]))
     # Transform the points to quaternions
     points_as_quaternions = PointsToquartenions(points_traslation)
+    #Normalize the axis of rotation
     v_norm = math.sqrt(sum([coord ** 2 for coord in [v1, v2, v3]]))
     v1, v2, v3 = v1 / v_norm, v2 / v_norm, v3 / v_norm
     axis_rotation = np.array([v1,v2,v3])
@@ -415,17 +424,16 @@ def translation_then_axialrotation(img:np.ndarray, parameters: tuple[float, ...]
     points_rot = axial_rotation(points_as_quaternions,angle_in_rads,axis_rotation)
 
     # Filter points
-
-
-
     del_indexes = my_filtering_function(points_rot,img.shape)
 
     points_rot = np.delete(points_rot, del_indexes, axis=0)
     points_img = np.delete(points_img, del_indexes, axis=0)
 
+
+    # Index the image points
     if np.any(points_rot):
         #for i in range(len(points_img)):
-        img_trans[points_rot[:, 0], points_rot[:, 1],points_rot[:,2]] = img[points_img[:,0],points_img[:,1],points_img[:,2]]
+        img_trans[points_img[:, 0], points_img[:, 1],points_img[:,2]] = img[points_rot[:,0],points_rot[:,1],points_rot[:,2]]
 
 
     return img_trans
@@ -437,21 +445,7 @@ def translation_then_axialrotation(img:np.ndarray, parameters: tuple[float, ...]
 def axialrotation_then_traslation(img:np.ndarray, parameters: tuple[float, ...])-> np.ndarray:
     """ Apply to `point` a translation followed by an axial rotation, both defined by `parameters`. """
 
-    """
 
-                 Esquema:
-                 Crear la imagen llena de 0
-                 Coger todos los indices,
-                 Pasarlos a quaternions,
-                 Transformarlos,
-                 Round,
-                 Zip,
-                 Filtrar diccionario,
-                 Unzip,
-                 Indexar imagen,
-                 Comparar MSE
-
-             """
 
     t1, t2, t3, angle_in_rads, v1, v2, v3 = parameters
 
@@ -471,14 +465,18 @@ def axialrotation_then_traslation(img:np.ndarray, parameters: tuple[float, ...])
     points_traslation = translation(points_rot, np.array([-t1,-t2,-t3]))
     # Filter points
 
+    points_traslation = np.round(points_traslation).astype(int)
+
+
+
     del_indexes = my_filtering_function(points_traslation,img.shape)
 
-    points_traslation = np.delete(points_rot, del_indexes, axis=0)
+    points_traslation = np.delete(points_traslation, del_indexes, axis=0)
     points_img = np.delete(points_img, del_indexes, axis=0)
 
     if np.any(points_traslation):
         #for i in range(len(points_img)):
-        img_trans[points_traslation[:, 0], points_traslation[:, 1],points_traslation[:,2]] = img[points_img[:,0],points_img[:,1],points_img[:,2]]
+        img_trans[points_img[:, 0], points_img[:, 1],points_img[:,2]] = img[points_traslation[:,0],points_traslation[:,1],points_traslation[:,2]]
 
 
     return img_trans
@@ -502,7 +500,7 @@ def my_filtering_function(points: np.ndarray,unwanted_value: tuple[int,...])->np
     del_indexes = np.where(conditions)[0]
     return del_indexes
 
-# Normalizar imagen
+
 
 
 def coregister(ref_img: np.ndarray, inp_img: np.ndarray):
@@ -521,20 +519,6 @@ def coregister(ref_img: np.ndarray, inp_img: np.ndarray):
         """ Transform input image, then compare with reference image."""
 
 
-        """
-
-              Esquema:
-              Coger todos los indices,
-              Pasarlos a quaternions,
-              Transformarlos,
-              Round,
-              Zip,
-              Filtrar diccionario,
-              Unzip,
-              Indexar imagen,
-              Comparar MSE
-
-          """
 
         t1, t2, t3, angle_in_rads, v1, v2, v3 = parameters
 
@@ -548,17 +532,17 @@ def coregister(ref_img: np.ndarray, inp_img: np.ndarray):
         inp_transf = translation_then_axialrotation(inp_img,parameters)
         print("Fin transformation")
 
-        #inp_transf = screw_full(inp_img,parameters)
 
+        # Get the error
         mse = mean_squared_error(ref_img, inp_transf)
 
         print(mse)
-        # Transformar imagen con parametros
+
         return mse
 
 
 
-    iteration_count = 0
+
     result = minimize(function_to_minimize,
                        initial_parameters,
                        method='Powell',
@@ -567,7 +551,7 @@ def coregister(ref_img: np.ndarray, inp_img: np.ndarray):
 
 
 def PointsToquartenions (points:np.ndarray)-> np.ndarray:
-
+    # Transform the array of points into an array of quaternions
     quaternion_numpy = quaternion.as_quat_array(np.insert(points,0,0,axis=1))
 
 
@@ -576,6 +560,7 @@ def PointsToquartenions (points:np.ndarray)-> np.ndarray:
 
 
 def showImage(img:np.ndarray)-> None:
+    #Show the image in each plane
     a1 = plt.subplot(2, 2, 1)
     plt.imshow(img[:, :, img.shape[2] // 2], cmap=plt.cm.bone)
 
@@ -588,7 +573,7 @@ def showImage(img:np.ndarray)-> None:
     plt.clf()
 
 def showImageAlpha(img:np.ndarray,imgref: np.ndarray,cmap:str)-> None:
-
+    # Show the alpha fusion in each plane
     def visualize_alpha_fusion2(img: np.ndarray, mask: np.ndarray) -> np.ndarray:
         """ Visualize both image and mask in the same plot. """
 
@@ -632,9 +617,7 @@ def get_thalamus_mask(img_atlas: np.ndarray) -> np.ndarray:
 
 def find_centroid(mask: np.ndarray) -> np.ndarray:
 
-    # Your code here:
-    #   Consider using `np.where` to find the indices of the voxels in the mask
-    #   ...
+    #Return the centroid of the mask
     return np.mean(np.where(mask == 1),axis=-1).astype(np.int32)
 
 
@@ -643,11 +626,8 @@ def visualize_thalamus_slices(
         mask: np.ndarray,
         mask_centroid: np.ndarray,
         ):
-    """ Visualize the axial slice (firs dim.) of a single region with alpha fusion. """
-    # Your code here
-    #   Remember `matplotlib.colormaps['cmap_name'](...)`
-    #   See also `matplotlib.colors.Normalize(vmin=..., vmax=...)`
-    #   ...
+    """ Visualize the slices of the thalamus and the image. """
+
 
     a1 = plt.subplot(2, 2, 1)
     axial = visualize_alpha_fusion(img[mask_centroid[0],:,:],mask[mask_centroid[0],:,:])
@@ -670,8 +650,8 @@ def visualize_thalamus_slices(
 
 def visualize_thalamus(img:np.ndarray,thalamus:np.ndarray,nombreImg:str,nombreGif:str)-> None:
     def crop(img: np.ndarray, shapeMask: tuple) -> np.ndarray:
-        shape_pacient = img.shape
-        # pixel_spacing
+
+
         start_x = (img.shape[2] - shapeMask[2]) // 2
         start_y = (img.shape[1] - shapeMask[1]) // 2
         start_z = (img.shape[0] - shapeMask[0]) // 2
@@ -722,18 +702,15 @@ def visualize_thalamus(img:np.ndarray,thalamus:np.ndarray,nombreImg:str,nombreGi
         anim.save(nameGif + '.gif')  # Save animation
 
 
+
+    # Crop the image to be the same size as the thalamus
     ref = crop(img,thalamus.shape)
-    print(ref.shape)
-
-
-    print("Shape thalamus")
-    print(thalamus.shape)
-
-
-
     centroids = find_centroid(thalamus)
+    # Visualize them with the alpha fusion
     visualize_thalamus_slices(ref,thalamus,centroids)
-    createAnimationAlpha2(ref, thalamus, 24, 43, nombreImg, nombreGif)
+    plt.clf()
+    # Do an animation
+    createAnimationAlpha2(ref, thalamus, 24, 83, nombreImg, nombreGif)
 
 
 
@@ -744,8 +721,6 @@ if __name__ == '__main__':
 
 
 
-   
-    
     ### Exercise 1
     path_segmentation = 'manifest-1713979305387/HCC-TACE-Seg/HCC_008/02-02-1998-NA-CT ABD LIV PRO-01687/300.000000-Segmentation-70014/1-1.dcm'
     path_CT = 'Correspondent CT'
@@ -770,14 +745,14 @@ if __name__ == '__main__':
     print(imgct.shape)  # Print (80, 512, 512)
 
     # Create the animations, for the segmentation, for the ct and for the alpha fusion
-    createAnimation(imgseg,pixel_len_mm,24,43,"ProjectionSeg","AnimationSeg")
-    createAnimation(imgct, pixel_len_mm, 24, 43, "ProjectionCT", "AnimationCT")
+    createAnimation(imgseg,pixel_len_mm,24,83,"ProjectionSeg","AnimationSeg")
+    createAnimation(imgct, pixel_len_mm, 24, 83, "ProjectionCT", "AnimationCT")
     imgNorm = normalization(imgct)
     imgseg = joinImage(imgseg)
-    createAnimationAlpha(imgNorm,imgseg, pixel_len_mm, 24, 43, "ProjectionAlphaFusion", "AnimationAlphaFusion")
+    createAnimationAlpha(imgNorm,imgseg, pixel_len_mm, 24, 83, "ProjectionAlphaFusion", "AnimationAlphaFusion")
 
 
-    
+
 
 
 
@@ -790,46 +765,58 @@ if __name__ == '__main__':
     print("Samples per pixel of the Input image:")
     print(load_segmentation(path_oneCtpacient).SamplesPerPixel)
     Ref = load_segmentation(path_reference)
+    patOne = load_segmentation(path_oneCtpacient)
     print("Samples per pixel of the reference image:")
     print(Ref.SamplesPerPixel)
     print(Ref.pixel_array.shape) # Shape de 193, 229, 193
     Mask = load_segmentation(path_mask)
+    # Get the mask and rotate it
     MaskImg = Mask.pixel_array
     MaskImg = MaskImg[::-1,:,:]
     print("El shape del mask")
     print(Mask.pixel_array.shape)
+
+    # Create the patient
     Pacient,p = createTheCtImage(path_pacient)
 
 
 
+    print("Pixel Spacing Phantom: ",Ref.SharedFunctionalGroupsSequence[0].PixelMeasuresSequence[0].PixelSpacing)
+    print("Pixel spacing patient",patOne.PixelSpacing)
 
-    Pacient = transformImgPacient(Pacient,Ref.pixel_array.shape)
+
+    # Transform the patient to be the same size as the reference
+    Pacient = transformImgPacient(Pacient,Ref.pixel_array.shape,Ref.SharedFunctionalGroupsSequence[0].PixelMeasuresSequence[0].PixelSpacing,patOne.PixelSpacing)
     print("Shape del paciente")
     print(Pacient.shape)
 
 
 
-    plt.show()
 
+
+    # Get the reference image
     ImgRef = Ref.pixel_array
 
 
-
+    # Rotate it
     ImgRef = ImgRef[::-1,:,:]
 
+
+    # Normalize the images to do an alpha fusion later
     Pacient = normalization(Pacient)
     Pacient = gaussian_filter(Pacient, sigma=1)
     ImgRef = normalization(ImgRef)
+    # Rotate the patient to be in the same orientation as the reference
     Pacient = Pacient[:,::-1,:]
- 
+    #Pacient = np.flip(Pacient,axis = 1)
     showImage(Pacient)
     showImage(ImgRef)
     plt.clf()
-    # Visualize the thalamos in the reference space
+    # Visualize the thalamus in the reference space
     thalamus = get_thalamus_mask(MaskImg)
     visualize_thalamus(ImgRef,thalamus,"ThalamusREF","ThalamusREFGif")
 
-
+    # Coregister the reference and the patient
     result = coregister(ImgRef, Pacient)
     solution_found = result.x
 
@@ -848,10 +835,11 @@ if __name__ == '__main__':
 
 
     # Show the image transformation
+    plt.clf()
     showImage(img_transformated)
     # Show the alpha fusion
     showImageAlpha(img_transformated,ImgRef,"Reds")
-
+    plt.clf()
 
 
 
@@ -859,8 +847,11 @@ if __name__ == '__main__':
 
     Thalamus = axialrotation_then_traslation(thalamus,result.x)
 
+    Thalamus = Thalamus.astype(int)
+
     # Alpha fusion with the thalamus and the input image
-        
-    visualize_thalamus(Pacient,Thalamus,"aaaaa","aaaaagif")
+
+    plt.clf()
+    visualize_thalamus(Pacient,Thalamus,"ThalamusInput","ThalamusInputGif")
     
 
