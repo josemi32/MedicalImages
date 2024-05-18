@@ -745,6 +745,39 @@ if __name__ == '__main__':
     print(imgct.shape)  # Print (80, 512, 512)
 
     # Create the animations, for the segmentation, for the ct and for the alpha fusion
+    def createAnimation3(img: np.ndarray, pixel_len_mm: list, n: int, interval: int, nameImg: str, nameGif: str):
+
+        img_min = np.amin(img)
+        img_max = np.amax(img)
+        fig, ax = plt.subplots()
+        #   Configure directory to save results
+        os.makedirs('results/MIP/', exist_ok=True)
+        #   Create projections
+        projections = []
+
+        for idx, alpha in enumerate(np.linspace(0, 360 * (n - 1) / n, num=n)):
+            # Rotate the image alpha degrees on the axial plane
+            rotated_img = rotate_on_axial_plane(img, alpha)
+            # Proyect the rotation on the Sagittal plane
+            projection_sagittal = MIP_sagittal_plane(rotated_img)
+
+            plt.clf()
+            plt.imshow(projection_sagittal, cmap='bone', vmin=img_min, vmax=img_max,
+                       aspect=pixel_len_mm[0] / pixel_len_mm[1])
+            plt.savefig('results/MIP/' + nameImg + f'_{idx}.png')  # Save animation
+            projections.append(projection_sagittal)  # Save for later animation
+            plt.clf()
+        # Save and visualize animation
+        animation_data = [
+            [plt.imshow(imggif, animated=True, cmap='bone', vmin=img_min, vmax=img_max,
+                        aspect=pixel_len_mm[0] / pixel_len_mm[1])]
+            for imggif in projections
+        ]
+        anim = animation.ArtistAnimation(fig, animation_data,
+                                         interval=interval, blit=True)
+        anim.save(nameGif + '.gif')  # Save animation
+        plt.clf()
+    createAnimation3(joinImage(imgseg).astype(int), pixel_len_mm, 24, 83, "ProjectionSeg2", "AnimationSeg2")
     createAnimation(imgseg,pixel_len_mm,24,83,"ProjectionSeg","AnimationSeg")
     createAnimation(imgct, pixel_len_mm, 24, 83, "ProjectionCT", "AnimationCT")
     imgNorm = normalization(imgct)
