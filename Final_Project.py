@@ -315,8 +315,8 @@ def transformImgPacient(img: np.ndarray,shapeRef: tuple,pixR,pixP)->np.ndarray:
     shape_pacient = img.shape
     # pixel_spacing
 
-    pixelSpacing1 = pixP[0] * pixR[0]
-    pixelSpacing2 = pixP[1] * pixR[1]
+    pixelSpacing1 = pixP[0] / pixR[0]
+    pixelSpacing2 = pixP[1] / pixR[1]
 
 
     # Resize the image
