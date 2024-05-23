@@ -97,10 +97,12 @@ def visualize_alpha_fusion(img: np.ndarray, mask: np.ndarray) -> np.ndarray:
 
 
     alpha = 0.2
-    # Equation of the alpha fusion
-    img = img_sagittal_cmapped * (1 - alpha) + (mask_bone_cmapped) * alpha
+    mask_condition = mask > 0
 
-    return img
+    # Equation of the alpha fusion
+    img_sagittal_cmapped[mask_condition] = img_sagittal_cmapped[mask_condition]  * (1 - alpha) + (mask_bone_cmapped[mask_condition] ) * alpha
+
+    return img_sagittal_cmapped
 
 def is_binary_image(image: np.ndarray) -> bool:
 
@@ -584,9 +586,9 @@ def showImageAlpha(img:np.ndarray,imgref: np.ndarray,cmap:str)-> None:
 
         alpha = 0.3
         # Equation of the alpha fusion
-        img = img_sagittal_cmapped * (1 - alpha) + (mask_bone_cmapped) * alpha
+        img_sagittal_cmapped[mask > 0] = img_sagittal_cmapped[mask > 0] * (1 - alpha) + (mask_bone_cmapped[mask > 0]) * alpha
 
-        return img
+        return img_sagittal_cmapped
 
     axial =visualize_alpha_fusion2(imgref[:, :, imgref.shape[2] // 2],img[:, :, img.shape[2] // 2])
     a1 = plt.subplot(2, 2, 1)
@@ -597,7 +599,7 @@ def showImageAlpha(img:np.ndarray,imgref: np.ndarray,cmap:str)-> None:
 
     plt.imshow(saggital)
 
-    coronnal = visualize_alpha_fusion(imgref[imgref.shape[0] // 2, :, :], img[img.shape[0] // 2, :, :])
+    coronnal = visualize_alpha_fusion2(imgref[imgref.shape[0] // 2, :, :], img[img.shape[0] // 2, :, :])
     a3 = plt.subplot(2, 2, 3)
     plt.imshow(coronnal)
 
@@ -777,9 +779,9 @@ if __name__ == '__main__':
                                          interval=interval, blit=True)
         anim.save(nameGif + '.gif')  # Save animation
         plt.clf()
-    createAnimation3(joinImage(imgseg).astype(int), pixel_len_mm, 24, 83, "ProjectionSeg2", "AnimationSeg2")
-    createAnimation(imgseg,pixel_len_mm,24,83,"ProjectionSeg","AnimationSeg")
-    createAnimation(imgct, pixel_len_mm, 24, 83, "ProjectionCT", "AnimationCT")
+    #createAnimation3(joinImage(imgseg).astype(int), pixel_len_mm, 24, 83, "ProjectionSeg2", "AnimationSeg2")
+    #createAnimation(imgseg,pixel_len_mm,24,83,"ProjectionSeg","AnimationSeg")
+    #createAnimation(imgct, pixel_len_mm, 24, 83, "ProjectionCT", "AnimationCT")
     imgNorm = normalization(imgct)
     imgseg = joinImage(imgseg)
     createAnimationAlpha(imgNorm,imgseg, pixel_len_mm, 24, 83, "ProjectionAlphaFusion", "AnimationAlphaFusion")
